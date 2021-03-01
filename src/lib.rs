@@ -1,6 +1,7 @@
 #![allow(unreachable_patterns)]
 #![allow(non_snake_case)]
 
+pub mod decode;
 pub mod encode;
 
 #[non_exhaustive]
@@ -106,5 +107,12 @@ mod tests {
     fn size_of_image_info_header() {
         let file_header_size = size_of::<ImageInfoHeader>();
         assert_eq!(16, file_header_size);
+    }
+
+    #[test]
+    fn encode_decode() {
+        let img = Image::new(100, 80);
+        let encoded = encode::encode_image(img).unwrap();
+        assert_eq!(encoded.len(), 1026);
     }
 }

@@ -1,7 +1,6 @@
 use std::io;
 
-use bitvec::prelude::*;
-use bitvec::slice::BitSlice;
+use bitvec::{prelude::*, vec::BitVec};
 use byteorder::{LittleEndian, WriteBytesExt};
 
 use crate::Image;
@@ -25,9 +24,11 @@ pub fn encode_image(obi_image: Image) -> io::Result<Vec<u8>> {
     // pixmap data
     let pixmap = obi_image.data;
     for byte in pixmap.chunks(8) {
-        let bits_as_u8 = byte.iter().map(|&e| e as u8).collect::<Vec<_>>();
-        let slice = BitSlice::<Lsb0, _>::from_slice(&bits_as_u8).unwrap();
-        obi_data.write_u8(slice.load::<u8>())?;
+        let mut bv = BitVec::<Lsb0, u8>::new();
+        for &b in byte {
+            bv.push(b);
+        }
+        obi_data.write_u8(bv.load::<u8>())?;
     }
 
     return Ok(obi_data);

@@ -1,11 +1,7 @@
 #![allow(unreachable_patterns)]
 #![allow(non_snake_case)]
-#[non_exhaustive]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Pixel {
-    On,
-    Off,
-}
+
+pub mod encode;
 
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -16,16 +12,16 @@ pub enum OBIVersion {
 impl OBIVersion {
     pub fn header_size(&self) -> u32 {
         match self {
-            One => 26,
+            OBIVersion::One => 26,
         }
     }
 }
 
 #[non_exhaustive]
 pub struct FileHeader {
-    pub version: u16,
     pub file_size: u32,
     pub data_offset: u32,
+    pub version: u16,
 }
 
 impl FileHeader {
@@ -82,15 +78,19 @@ impl CompressionType {
 pub struct Image {
     pub file_header: FileHeader,
     pub image_info_header: ImageInfoHeader,
-    pub data: Vec<Pixel>,
+    pub data: Vec<bool>,
 }
 
 impl Image {
     pub fn new(width: u32, height: u32) -> Self {
-        let data_size = width * height;
-        let data = vec![Pixel::Off; data_size as usize];
+        // round to the nearest multiple of 8
+        // convert to number of bytes by dividing by 8
+        let mut data_size = width * height + 7;
+        data_size = data_size - (data_size % 8);
+        let data = vec![false; data_size as usize];
+
         Self {
-            file_header: FileHeader::new(OBIVersion::One, data_size),
+            file_header: FileHeader::new(OBIVersion::One, data_size / 8),
             image_info_header: ImageInfoHeader::new(width, height),
             data,
         }
@@ -99,8 +99,12 @@ impl Image {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use std::mem::size_of;
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn size_of_image_info_header() {
+        let file_header_size = size_of::<ImageInfoHeader>();
+        assert_eq!(16, file_header_size);
     }
 }

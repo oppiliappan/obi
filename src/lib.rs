@@ -1,8 +1,13 @@
 #![allow(unreachable_patterns)]
 #![allow(non_snake_case)]
 
-pub mod decode;
-pub mod encode;
+use std::io;
+
+mod decode;
+mod encode;
+pub mod error;
+
+use crate::error::{OBIError, OBIResult};
 
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -59,6 +64,7 @@ impl ImageInfoHeader {
 }
 
 #[non_exhaustive]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum CompressionType {
     RLE,
     Kosinki,
@@ -96,23 +102,34 @@ impl Image {
             data,
         }
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::mem::size_of;
-
-    #[test]
-    fn size_of_image_info_header() {
-        let file_header_size = size_of::<ImageInfoHeader>();
-        assert_eq!(16, file_header_size);
+    pub fn width(&self) -> u32 {
+        self.image_info_header.width
     }
 
-    #[test]
-    fn encode_decode() {
-        let img = Image::new(100, 80);
-        let encoded = encode::encode_image(img).unwrap();
-        assert_eq!(encoded.len(), 1026);
+    pub fn height(&self) -> u32 {
+        self.image_info_header.height
+    }
+
+    fn to_index(&self, x: u32, y: u32) -> usize {
+        (y * self.width() + x) as usize
+    }
+
+    pub fn set_pixel(&mut self, x: u32, y: u32, val: bool) -> OBIResult<()> {
+        if x >= self.width() || y > self.height() {
+            Err(OBIError::Image)
+        } else {
+            let index = self.to_index(x, y);
+            self.data[index] = val;
+            Ok(())
+        }
+    }
+
+    pub fn encode(&self) -> OBIResult<Vec<u8>> {
+        encode::encode_image(self)
+    }
+
+    pub fn decode(data: &mut io::Cursor<Vec<u8>>) -> OBIResult<Image> {
+        decode::decode_image(data)
     }
 }

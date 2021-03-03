@@ -1,15 +1,22 @@
-use std::io::{self, Cursor, Read};
+use std::io::{Cursor, Read};
 
 use bitvec::prelude::*;
 use byteorder::{LittleEndian, ReadBytesExt};
 
+use crate::error::{OBIError, OBIResult};
 use crate::{FileHeader, Image, ImageInfoHeader};
 
-pub fn decode_image(obi_data: &mut Cursor<Vec<u8>>) -> io::Result<Image> {
+pub fn decode_image(obi_data: &mut Cursor<Vec<u8>>) -> OBIResult<Image> {
     // file header
-    let version = obi_data.read_u16::<LittleEndian>()?;
-    let file_size = obi_data.read_u32::<LittleEndian>()?;
-    let data_offset = obi_data.read_u32::<LittleEndian>()?;
+    let version = obi_data
+        .read_u16::<LittleEndian>()
+        .map_err(|_| OBIError::Decode)?;
+    let file_size = obi_data
+        .read_u32::<LittleEndian>()
+        .map_err(|_| OBIError::Decode)?;
+    let data_offset = obi_data
+        .read_u32::<LittleEndian>()
+        .map_err(|_| OBIError::Decode)?;
     let file_header = FileHeader {
         version,
         file_size,
@@ -17,10 +24,18 @@ pub fn decode_image(obi_data: &mut Cursor<Vec<u8>>) -> io::Result<Image> {
     };
 
     // image info header
-    let width = obi_data.read_u32::<LittleEndian>()?;
-    let height = obi_data.read_u32::<LittleEndian>()?;
-    let compression_type = obi_data.read_u32::<LittleEndian>()?;
-    let post_compression_size = obi_data.read_u32::<LittleEndian>()?;
+    let width = obi_data
+        .read_u32::<LittleEndian>()
+        .map_err(|_| OBIError::Decode)?;
+    let height = obi_data
+        .read_u32::<LittleEndian>()
+        .map_err(|_| OBIError::Decode)?;
+    let compression_type = obi_data
+        .read_u32::<LittleEndian>()
+        .map_err(|_| OBIError::Decode)?;
+    let post_compression_size = obi_data
+        .read_u32::<LittleEndian>()
+        .map_err(|_| OBIError::Decode)?;
     let image_info_header = ImageInfoHeader {
         width,
         height,
@@ -30,7 +45,9 @@ pub fn decode_image(obi_data: &mut Cursor<Vec<u8>>) -> io::Result<Image> {
 
     // pixmap data
     let mut data_bytes = vec![];
-    obi_data.read_to_end(&mut data_bytes)?;
+    obi_data
+        .read_to_end(&mut data_bytes)
+        .map_err(|_| OBIError::Decode)?;
     let data = data_bytes
         .iter()
         .map(|&b| {

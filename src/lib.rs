@@ -1,5 +1,6 @@
 #![allow(unreachable_patterns)]
 #![allow(non_snake_case)]
+#![allow(dead_code)]
 
 use std::io;
 
@@ -24,6 +25,7 @@ impl OBIVersion {
 }
 
 #[non_exhaustive]
+#[derive(Debug)]
 pub struct FileHeader {
     pub file_size: u32,
     pub data_offset: u32,
@@ -45,6 +47,7 @@ impl FileHeader {
 }
 
 #[non_exhaustive]
+#[derive(Debug)]
 pub struct ImageInfoHeader {
     pub width: u32,
     pub height: u32,
@@ -82,6 +85,7 @@ impl CompressionType {
     }
 }
 
+#[derive(Debug)]
 pub struct Image {
     pub file_header: FileHeader,
     pub image_info_header: ImageInfoHeader,
@@ -90,11 +94,15 @@ pub struct Image {
 
 impl Image {
     pub fn new(width: u32, height: u32) -> Self {
+        Self::new_with(width, height, false)
+    }
+
+    pub fn new_with(width: u32, height: u32, default_val: bool) -> Self {
         // round to the nearest multiple of 8
         // convert to number of bytes by dividing by 8
         let mut data_size = width * height + 7;
         data_size = data_size - (data_size % 8);
-        let data = vec![false; data_size as usize];
+        let data = vec![default_val; data_size as usize];
 
         Self {
             file_header: FileHeader::new(OBIVersion::One, data_size / 8),
@@ -111,18 +119,30 @@ impl Image {
         self.image_info_header.height
     }
 
-    fn to_index(&self, x: u32, y: u32) -> usize {
-        (y * self.width() + x) as usize
-    }
-
-    pub fn set_pixel(&mut self, x: u32, y: u32, val: bool) -> OBIResult<()> {
-        if x >= self.width() || y > self.height() {
+    #[doc(hidden)]
+    pub fn index(&self, x: u32, y: u32) -> OBIResult<usize> {
+        if x >= self.width() || y >= self.height() {
             Err(OBIError::Image)
         } else {
-            let index = self.to_index(x, y);
-            self.data[index] = val;
-            Ok(())
+            return Ok((y * self.width() + x) as usize);
         }
+    }
+
+    pub fn set(&mut self, x: u32, y: u32, val: bool) -> OBIResult<()> {
+        let index = self.index(x, y)?;
+        self.data[index] = val;
+        Ok(())
+    }
+
+    pub fn flip(&mut self, x: u32, y: u32) -> OBIResult<()> {
+        let index = self.index(x, y)?;
+        self.data[index] = !self.data[index];
+        Ok(())
+    }
+
+    pub fn get(&self, x: u32, y: u32) -> OBIResult<bool> {
+        let index = self.index(x, y)?;
+        Ok(self.data[index])
     }
 
     pub fn encode(&self) -> OBIResult<Vec<u8>> {

@@ -3,8 +3,11 @@ use std::borrow::Borrow;
 use bitvec::{prelude::*, vec::BitVec};
 use byteorder::{LittleEndian, WriteBytesExt};
 
-use crate::error::{OBIError, OBIResult};
-use crate::Image;
+use crate::{
+    error::{OBIError, OBIResult},
+    rle::RLE,
+    CompressionType, Image,
+};
 
 pub fn encode_image<I>(obi_image: I) -> OBIResult<Vec<u8>>
 where
@@ -40,17 +43,38 @@ where
         .write_u32::<LittleEndian>(image_info_header.post_compression_size)
         .map_err(|_| OBIError::Encode)?;
 
+    let write_pixel_data = |pixels: &Vec<bool>, obi_data: &mut Vec<u8>| -> OBIResult<()> {
+        for byte in pixels.chunks(8) {
+            let mut bv = BitVec::<Lsb0, u8>::new();
+            for &b in byte {
+                bv.push(b)
+            }
+            obi_data
+                .write_u8(bv.load::<u8>())
+                .map_err(|_| OBIError::Encode)?;
+        }
+        Ok(())
+    };
+
     // pixmap data
     let pixmap = &obi_image.data;
-    for byte in pixmap.chunks(8) {
-        let mut bv = BitVec::<Lsb0, u8>::new();
-        for &b in byte {
-            bv.push(b);
+    match CompressionType::from_u32(obi_image.image_info_header.compression_type) {
+        CompressionType::RLE => {
+            let (data_points, lengths): (Vec<_>, Vec<_>) = pixmap.compress().into_iter().unzip();
+            for l in lengths {
+                obi_data
+                    .write_u32::<LittleEndian>(l as u32)
+                    .map_err(|_| OBIError::Encode)?;
+            }
+            // end length sequence with zero
+            obi_data
+                .write_u32::<LittleEndian>(0)
+                .map_err(|_| OBIError::Encode)?;
+            // begin data point sequence
+            write_pixel_data(&data_points, &mut obi_data)?;
         }
-        obi_data
-            .write_u8(bv.load::<u8>())
-            .map_err(|_| OBIError::Encode)?;
-    }
+        _ => write_pixel_data(pixmap, &mut obi_data)?,
+    };
 
     return Ok(obi_data);
 }

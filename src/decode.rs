@@ -4,7 +4,7 @@ use bitvec::prelude::*;
 use byteorder::{LittleEndian, ReadBytesExt};
 
 use crate::error::{OBIError, OBIResult};
-use crate::{FileHeader, Image, ImageInfoHeader};
+use crate::{CompressionType, FileHeader, Image, ImageInfoHeader};
 
 pub fn decode_image(obi_data: &mut Cursor<Vec<u8>>) -> OBIResult<Image> {
     // file header
@@ -43,22 +43,59 @@ pub fn decode_image(obi_data: &mut Cursor<Vec<u8>>) -> OBIResult<Image> {
         post_compression_size,
     };
 
-    // pixmap data
-    let mut data_bytes = vec![];
-    obi_data
-        .read_to_end(&mut data_bytes)
-        .map_err(|_| OBIError::Decode)?;
-    let data = data_bytes
-        .iter()
-        .map(|&b| {
-            BitVec::<Lsb0, u8>::from_element(b)
-                .into_iter()
-                .map(|e| e as bool)
-                .collect::<Vec<bool>>()
-        })
-        .flatten()
-        .collect::<Vec<_>>();
+    let data: Vec<bool> = match CompressionType::from_u32(compression_type) {
+        CompressionType::RLE => {
+            let mut rest = vec![];
+            let mut lengths = vec![];
+            loop {
+                let l = obi_data
+                    .read_u32::<LittleEndian>()
+                    .map_err(|_| OBIError::Encode)?;
+                if l == 0 {
+                    break;
+                }
+                lengths.push(l);
+            }
+            obi_data
+                .read_to_end(&mut rest)
+                .map_err(|_| OBIError::Decode)?;
+            let data_points = rest
+                .iter()
+                .map(|&b| {
+                    BitVec::<Lsb0, u8>::from_element(b)
+                        .into_iter()
+                        .map(|e| e as bool)
+                        .collect::<Vec<bool>>()
+                })
+                .flatten()
+                .collect::<Vec<bool>>();
 
+            let data = data_points
+                .into_iter()
+                .zip(lengths)
+                .map(|(d, l)| vec![d; l as usize])
+                .flatten()
+                .collect::<Vec<bool>>();
+            data
+        }
+        _ => {
+            let mut rest = vec![];
+            obi_data
+                .read_to_end(&mut rest)
+                .map_err(|_| OBIError::Decode)?;
+            let data_points = rest
+                .iter()
+                .map(|&b| {
+                    BitVec::<Lsb0, u8>::from_element(b)
+                        .into_iter()
+                        .map(|e| e as bool)
+                        .collect::<Vec<bool>>()
+                })
+                .flatten()
+                .collect::<Vec<_>>();
+            data_points
+        }
+    };
     return Ok(Image {
         file_header,
         image_info_header,

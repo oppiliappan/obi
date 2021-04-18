@@ -7,8 +7,10 @@ use std::io;
 mod decode;
 mod encode;
 pub mod error;
+mod rle;
 
-use crate::error::{OBIError, OBIResult};
+use error::{OBIError, OBIResult};
+use rle::RLE;
 
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -83,6 +85,14 @@ impl CompressionType {
             _ => panic!("Invalid compression algorithm"),
         }
     }
+    pub fn to_u32(self) -> u32 {
+        match self {
+            CompressionType::None => 0,
+            CompressionType::RLE => 1,
+            CompressionType::Kosinki => 10,
+            _ => panic!("Invalid compression algorithm"),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -109,6 +119,10 @@ impl Image {
             image_info_header: ImageInfoHeader::new(width, height),
             data,
         }
+    }
+
+    pub fn use_compression(&mut self, comp: CompressionType) {
+        self.image_info_header.compression_type = comp.to_u32();
     }
 
     pub fn width(&self) -> u32 {

@@ -23,6 +23,11 @@
         rust = (mozilla.rustChannelOf chanspec).rust;
         rust-src = (mozilla.rustChannelOf chanspec).rust-src;
 
+        nativeBuildInputs = with pkgs; [
+          SDL2
+          SDL2_ttf
+        ];
+
         naersk-lib = naersk.lib."${system}".override {
           cargo = rust;
           rustc = rust;
@@ -40,7 +45,7 @@
         };
         defaultApp = apps.my-project;
         devShell = pkgs.mkShell {
-          nativeBuildInputs = [
+          nativeBuildInputs = nativeBuildInputs ++ [
             rust
             rust-src
             pkgs.rust-analyzer

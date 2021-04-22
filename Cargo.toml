@@ -3,9 +3,24 @@ name = "obi"
 version = "0.1.0"
 authors = ["Akshay <nerdy@peppe.rs>"]
 edition = "2018"
+description = "the 1-bit image format"
+homepage = "https://github.com/nerdypepper/obi"
+repository = "https://github.com/nerdypepper/obi"
+readme = './readme.md'
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 byteorder = "1.4.2"
 bitvec = "0.21.0"
+sdl2 = {version = "0.34", optional = true}
+
+[features]
+default = []
+viewer = ["sdl2"]
+
+[[bin]]
+name = "obiv"
+path = "src/bin/viewer.rs"
+required-features = ["viewer"]

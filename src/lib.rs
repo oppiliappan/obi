@@ -10,7 +10,6 @@ pub mod error;
 mod rle;
 
 use error::{OBIError, OBIResult};
-use rle::RLE;
 
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq)]

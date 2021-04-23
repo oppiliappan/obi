@@ -4,6 +4,7 @@
 
 use std::io;
 
+pub mod convert;
 mod decode;
 mod encode;
 pub mod error;
@@ -164,5 +165,9 @@ impl Image {
 
     pub fn decode(data: &mut io::Cursor<Vec<u8>>) -> OBIResult<Image> {
         decode::decode_image(data)
+    }
+
+    pub fn write_png<W: io::Write>(&self, writer: W) -> png::Writer<W> {
+        convert::to_png(writer, self)
     }
 }

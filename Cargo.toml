@@ -13,14 +13,16 @@ license = "MIT"
 
 [dependencies]
 byteorder = "1.4.2"
-bitvec = "0.21.0"
-sdl2 = {version = "0.34", optional = true}
+bitvec    = "0.21.0"
+sdl2      = { version = "0.34", optional = true }
+png       = { version = "0.16", optional = true }
 
 [features]
 default = []
-viewer = ["sdl2"]
+convert = ["png"]
+viewer  = ["sdl2"]
 
 [[bin]]
-name = "obiv"
-path = "src/bin/viewer.rs"
+name              = "obiv"
+path              = "src/bin/viewer.rs"
 required-features = ["viewer"]

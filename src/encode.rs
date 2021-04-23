@@ -76,5 +76,5 @@ where
         _ => write_pixel_data(pixmap, &mut obi_data)?,
     };
 
-    return Ok(obi_data);
+    Ok(obi_data)
 }

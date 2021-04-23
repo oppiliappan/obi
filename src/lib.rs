@@ -137,7 +137,7 @@ impl Image {
         if x >= self.width() || y >= self.height() {
             Err(OBIError::Image)
         } else {
-            return Ok((y * self.width() + x) as usize);
+            Ok((y * self.width() + x) as usize)
         }
     }
 

@@ -18,8 +18,8 @@ pub fn decode_image(obi_data: &mut Cursor<Vec<u8>>) -> OBIResult<Image> {
         .read_u32::<LittleEndian>()
         .map_err(|_| OBIError::Decode)?;
     let file_header = FileHeader {
-        version,
         file_size,
+        version,
         data_offset,
     };
 
@@ -59,8 +59,7 @@ pub fn decode_image(obi_data: &mut Cursor<Vec<u8>>) -> OBIResult<Image> {
             obi_data
                 .read_to_end(&mut rest)
                 .map_err(|_| OBIError::Decode)?;
-            let data_points = rest
-                .iter()
+            rest.iter()
                 .map(|&b| {
                     BitVec::<Lsb0, u8>::from_element(b)
                         .into_iter()
@@ -68,23 +67,18 @@ pub fn decode_image(obi_data: &mut Cursor<Vec<u8>>) -> OBIResult<Image> {
                         .collect::<Vec<bool>>()
                 })
                 .flatten()
-                .collect::<Vec<bool>>();
-
-            let data = data_points
                 .into_iter()
                 .zip(lengths)
                 .map(|(d, l)| vec![d; l as usize])
                 .flatten()
-                .collect::<Vec<bool>>();
-            data
+                .collect::<Vec<bool>>()
         }
         _ => {
             let mut rest = vec![];
             obi_data
                 .read_to_end(&mut rest)
                 .map_err(|_| OBIError::Decode)?;
-            let data_points = rest
-                .iter()
+            rest.iter()
                 .map(|&b| {
                     BitVec::<Lsb0, u8>::from_element(b)
                         .into_iter()
@@ -92,13 +86,12 @@ pub fn decode_image(obi_data: &mut Cursor<Vec<u8>>) -> OBIResult<Image> {
                         .collect::<Vec<bool>>()
                 })
                 .flatten()
-                .collect::<Vec<_>>();
-            data_points
+                .collect::<Vec<_>>()
         }
     };
-    return Ok(Image {
+    Ok(Image {
         file_header,
         image_info_header,
         data,
-    });
+    })
 }

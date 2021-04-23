@@ -6,12 +6,22 @@
       url = "github:mozilla/nixpkgs-mozilla";
       flake = false;
     };
+    gitignore = {
+      url = "github:hercules-ci/gitignore";
+      flake = false;
+    };
+    flake-compat = {
+      url = "github:edolstra/flake-compat";
+      flake = false;
+    };
+
   };
 
-  outputs = { self, nixpkgs, utils, naersk, mozillapkgs }:
+  outputs = { self, nixpkgs, utils, naersk, mozillapkgs, gitignore, ... }:
     utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages."${system}";
+        inherit (import gitignore { inherit (pkgs) lib; }) gitignoreSource;
 
         # Get a specific rust version
         mozilla = pkgs.callPackage (mozillapkgs + "/package-set.nix") { };
@@ -20,24 +30,31 @@
           channel = "nightly";
           sha256 = "oK5ebje09MRn988saJMT3Zze/tRE7u9zTeFPV1CEeLc="; # set zeros after modifying channel or date
         };
-        rust = (mozilla.rustChannelOf chanspec).rust;
-        rust-src = (mozilla.rustChannelOf chanspec).rust-src;
+
+        rustChannel = mozilla.rustChannelOf chanspec;
+        rust = rustChannel.rust;
+        rust-src = rustChannel.rust-src;
+
+        naersk-lib = naersk.lib."${system}".override {
+          cargo = rust;
+          rustc = rust;
+        };
 
         nativeBuildInputs = with pkgs; [
           SDL2
           SDL2_ttf
         ];
 
-        naersk-lib = naersk.lib."${system}".override {
-          cargo = rust;
-          rustc = rust;
-        };
       in
       rec {
         packages.my-project = naersk-lib.buildPackage {
-          pname = "obi";
+          pname = "obiv";
           version = "0.1.0";
           root = ./.;
+          inherit nativeBuildInputs;
+          cargoBuildOptions =
+            v:
+            [ "$cargo_release" ''-j "$NIX_BUILD_CORES"'' "--out-dir" "out" "--all-features" "--bin" "obiv" "--message-format=$cargo_message_format" ];
         };
         defaultPackage = packages.my-project;
         apps.my-project = utils.lib.mkApp {
@@ -55,7 +72,6 @@
           RUST_SRC_PATH = "${rust-src}/lib/rustlib/src/rust/library";
           RUST_LOG = "info";
           RUST_BACKTRACE = 1;
-
         };
       });
 }
